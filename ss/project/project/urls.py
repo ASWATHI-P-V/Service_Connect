@@ -18,14 +18,17 @@ from django.contrib import admin
 from django.urls import path,include
 from django.conf.urls.static import static
 from . import settings
+from accounts.views import LoginView , UserDetailView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    # path('accounts/', include('accounts.urls')),
-    # path('customer/', include('customer.urls')),
-    # path('service-provider/', include('serviceprovider.urls')),
-    # path('dealer/', include('dealer.urls')),
-    # path('franchise/',include('franchise.urls')),
+    path('login/', LoginView.as_view(), name='token_obtain_pair'),
+    path('accounts/', include('accounts.urls')),
+    #path('accounts/user-details/', UserDetailView.as_view(), name='user-details'),
+    #path('customer/', include('customer.urls')),
+    #path('service-provider/', include('serviceprovider.urls')),
+    path('dealer/', include('dealer.urls')),
+    #path('franchise/',include('franchise.urls')),
 ]
 
 if settings.DEBUG:

@@ -1,3 +1,30 @@
 from django.contrib import admin
+from .models import OTP, Category, Collar, Customer, CustomerReview, Dealer, District, Franchise_Type, Franchisee, Invoice, Service_Type, ServiceProvider, ServiceRegister, ServiceRequest, State, Subcategory, User, Country_Codes,PaymentRequest,Complaint,Payment, Ad_category,Ad_Management,AdminProfile,IncomeManagement,DeclineServiceModel
+from .models import *
 
-# Register your models here.
+admin.site.register(User)
+admin.site.register(Customer)
+admin.site.register(ServiceProvider)
+admin.site.register(Franchisee)
+admin.site.register(Franchise_Type)
+admin.site.register(Dealer)
+admin.site.register(Country_Codes)
+admin.site.register(OTP)
+admin.site.register(District)
+admin.site.register(State)
+admin.site.register(ServiceRegister)
+admin.site.register(ServiceRequest)
+admin.site.register(Collar)
+admin.site.register(Service_Type)
+admin.site.register(Category)
+admin.site.register(Subcategory)
+admin.site.register(Invoice)
+admin.site.register(CustomerReview)
+admin.site.register(PaymentRequest)
+admin.site.register(Payment)
+admin.site.register(Ad_category)
+admin.site.register(Ad_Management)
+admin.site.register(AdminProfile)
+admin.site.register(IncomeManagement)
+admin.site.register(DeclineServiceModel)
+admin.site.register(Complaint)
