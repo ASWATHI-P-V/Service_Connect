@@ -1,11 +1,10 @@
 from django.shortcuts import render
-
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
-from accounts.models import Dealer, Franchisee
-from .serializers import DealerSerializer,UserSerializer
+from accounts.models import Dealer, Franchisee, PaymentRequest
+from .serializers import DealerSerializer,UserSerializer, PaymentRequestSerializer
 from rest_framework.parsers import MultiPartParser, FormParser , JSONParser
 
 class DealerDetailView(APIView):
@@ -121,3 +120,35 @@ class DealerDetailView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+
+
+class AddDealerView(APIView):
+    def post(self, request):
+        serializer = DealerSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()  
+            return Response({
+                'message': 'Dealer added successfully',
+                'data': serializer.data
+            }, status=status.HTTP_201_CREATED)
+        return Response({
+            'message': 'Error while adding dealer',
+            'errors': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+class PaymentRequestListCreateView(APIView):
+    def get(self, request):
+        """Retrieve all payment requests"""
+        payment_requests = PaymentRequest.objects.all()
+        serializer = PaymentRequestSerializer(payment_requests, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        """Create a new payment request"""
+        serializer = PaymentRequestSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

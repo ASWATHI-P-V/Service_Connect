@@ -15,7 +15,7 @@ from .serializers import (
     LoginSerializer
 )
 from django.shortcuts import get_object_or_404
-# ViewSet to handle CRUD operations for User model
+
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer

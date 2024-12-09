@@ -122,7 +122,6 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
-        # Add additional custom claims
         token['user_id'] = user.id
         token['email'] = user.email
         token['full_name'] = user.full_name
@@ -130,7 +129,6 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
     def validate(self, attrs):
         data = super().validate(attrs)
-        # Add user-specific data to the response
         data.update({
             'user_id': self.user.id,
             'email': self.user.email,

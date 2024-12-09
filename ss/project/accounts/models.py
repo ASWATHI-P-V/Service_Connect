@@ -439,14 +439,32 @@ class ServiceRegister(models.Model):
         super(ServiceRegister, self).save(*args, **kwargs) 
    
 class PaymentRequest(models.Model):
-    service_provider = models.ForeignKey(ServiceProvider, on_delete=models.PROTECT,related_name='from_paymentrequest')
-    dealer = models.ForeignKey(Dealer, on_delete=models.PROTECT,related_name='to_paymentrequest')
+    SENDER_TYPE_CHOICES = [
+        ('DEALER', 'Dealer'),
+        ('SERVICE_PROVIDER', 'Service Provider')
+    ]
+    
+    # Generic foreign key pattern to handle multiple sender types
+    sender_type = models.CharField(max_length=20, choices=SENDER_TYPE_CHOICES, default='DEALER')
+    dealer_sender = models.ForeignKey(Dealer, on_delete=models.PROTECT, 
+                                    null=True, blank=True, 
+                                    related_name='sent_payment_requests')
+    service_provider_sender = models.ForeignKey(ServiceProvider, 
+                                              on_delete=models.PROTECT,
+                                              null=True, blank=True,
+                                              related_name='sent_payment_requests')
+    admin = models.ForeignKey(User, on_delete=models.PROTECT, 
+                            limit_choices_to={'is_superuser': True},
+                            related_name='received_payment_requests',default=1)
+    
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     description = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     email = models.EmailField()
-    country_code = models.ForeignKey(Country_Codes,max_length=25,on_delete=models.SET_NULL,null=True,blank=True)
-    phone = models.CharField(validators=[phone_regex],max_length=15)
+    country_code = models.ForeignKey('Country_Codes', max_length=25, 
+                                   on_delete=models.SET_NULL, 
+                                   null=True, blank=True)
+    phone = models.CharField(validators=[phone_regex], max_length=15)
 
     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES)
     account_holder_name = models.CharField(max_length=50)
@@ -454,11 +472,28 @@ class PaymentRequest(models.Model):
     bank_branch = models.CharField(max_length=50)
     account_number = models.CharField(max_length=50)
     ifsc_code = models.CharField(max_length=50)
-    supporting_documents = models.FileField(upload_to='payment-request/', blank=True, null=True, validators=[validate_file_size])
+    supporting_documents = models.FileField(
+        upload_to='payment-request/',
+        blank=True,
+        null=True,
+        validators=[validate_file_size]
+    )
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def _str_(self):
+        sender = self.dealer_sender if self.sender_type == 'DEALER' else self.service_provider_sender
+        return f"Payment request from {self.sender_type} {sender} for {self.amount}"
+
+    @property
+    def sender(self):
+        """Return the actual sender object based on sender_type"""
+        return self.dealer_sender if self.sender_type == 'DEALER' else self.service_provider_sender
 
 
-    def __str__(self):
-        return f"Request by {self.service_provider.full_name} to {self.dealer.name} for {self.amount}"
+
+
 
 
 class ServiceRequest(models.Model):
@@ -468,30 +503,38 @@ class ServiceRequest(models.Model):
         ('completed', 'Completed'),
         ('cancelled', 'Cancelled'),
     ]
-    #user = models.ForeignKey(User, on_delete=models.CASCADE)
-    booking_id = models.CharField(max_length=10, unique=True, editable=False)
-    title = models.CharField(max_length=20,null=True,blank=True)
-    customer = models.ForeignKey(User, on_delete=models.PROTECT,related_name='from_servicerequest')
-    service_provider = models.ForeignKey(User, on_delete=models.PROTECT,related_name='to_servicerequest')
-    service = models.ForeignKey(ServiceRegister, on_delete=models.CASCADE,related_name='servicerequest')
+    booking_id = models.CharField(max_length=10, unique=True, editable=False, blank=True)
+    title = models.CharField(max_length=20, null=True, blank=True)
+    customer = models.ForeignKey(User, on_delete=models.PROTECT, related_name='from_servicerequest')
+    service_provider = models.ForeignKey(User, on_delete=models.PROTECT, related_name='to_servicerequest')
+    service = models.ForeignKey(ServiceRegister, on_delete=models.CASCADE, related_name='servicerequest')
     work_status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     updated_at = models.DateTimeField(auto_now=True)
-    acceptance_status = models.CharField(max_length=20,choices=[('accept', 'accept'), ('decline', 'decline'),('pending', 'pending')],default='pending')
+    acceptance_status = models.CharField(max_length=20, choices=[
+        ('accept', 'accept'),
+        ('decline', 'decline'),
+        ('pending', 'pending'),
+    ], default='pending')
     request_date = models.DateTimeField(auto_now_add=True)
-    availability_from = models.DateTimeField()  # New field for availability start
-    availability_to = models.DateTimeField()    # New field for availability end
+    availability_from = models.DateTimeField()
+    availability_to = models.DateTimeField()
     additional_notes = models.TextField(blank=True, null=True)
     image = models.ImageField(upload_to='service_request/', null=True, blank=True, validators=[validate_file_size])
-    reschedule_status = models.BooleanField(default=False)  # New field for rescheduling status
+    reschedule_status = models.BooleanField(default=False)
 
-
-    def __str__(self):
-        return f"Request by {self.customer.full_name} for {self.service} ({self.acceptance_status})"
+    def save(self, *args, **kwargs):
+        if not self.booking_id:
+            # Generate a unique booking ID (10 characters)
+            self.booking_id = uuid.uuid4().hex[:10].upper()
+        super().save(*args, **kwargs)
 
     def clean(self):
         # Ensure the availability_from is before availability_to
         if self.availability_from >= self.availability_to:
-            raise ValidationError('Availability "from" time must be before "to" time.')    
+            raise ValidationError('Availability "from" time must be before "to" time.')
+
+    def __str__(self):
+        return f"Request by {self.customer.full_name} for {self.service} ({self.acceptance_status})"
 
 class CustomerReview(models.Model):
     RATING_CHOICES = [
@@ -714,7 +757,7 @@ class Ad_Management(models.Model):
     target_area = models.CharField(max_length=100,choices=TARGET_AREA_CHOICES, default='up_to_5_km')
     total_days = models.IntegerField()
     total_amount = models.DecimalField(max_digits=5,decimal_places=2)
-    image = models.ImageField(upload_to='ad_images/',validators=[])
+    image = models.ImageField(upload_to='ad_images/',validators=[],null=True,blank=True)
 
 
 class AdminProfile(models.Model):
@@ -754,3 +797,14 @@ class IncomeManagement(models.Model):
     def __str__(self):
         return f"{self.sl_no} - {self.income_type}"
       
+
+
+
+class BlockedUser(models.Model):
+    blocking_user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='blocking_user', on_delete=models.CASCADE)
+    blocked_user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='blocked_user', on_delete=models.CASCADE)
+    is_blocked = models.BooleanField(default=True)  # True means blocked, False means unblock
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def _str_(self):
+        return f"{self.blocking_user.email} has blocked {self.blocked_user.email}"
