@@ -10,8 +10,7 @@ from adminapp.serializers import (
     ComplaintSerializer,
     FranchiseTypeSerializer,
     AdManagementSerializer,
-    AdCategorySerializer,
-    BlockedUserSerializer
+    AdCategorySerializer
 )
 from django.utils.timezone import now
 from django.db.models import Q
